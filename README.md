@@ -221,23 +221,18 @@ Here's the complete standalone HTML version:
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
     }
-
     @media (min-width: 640px) {
       .people-grid { grid-template-columns: repeat(3, 1fr); }
     }
-
     @media (min-width: 768px) {
       .people-grid { grid-template-columns: repeat(4, 1fr); }
     }
-
     @media (min-width: 1024px) {
       .people-grid { grid-template-columns: repeat(5, 1fr); }
     }
-
     @media (min-width: 1280px) {
       .people-grid { grid-template-columns: repeat(6, 1fr); }
     }
-
     @media (min-width: 1536px) {
       .people-grid { grid-template-columns: repeat(7, 1fr); }
     }
@@ -782,7 +777,6 @@ Here's the complete standalone HTML version:
       { id: '13', name: 'Thais', role: 'Agente', demands: [] },
       { id: '14', name: 'Vitória', role: 'Agente', demands: [] }
     ];
-
     const DEMANDS = [
       { id: 'nivel2', name: 'Nível II', color: 'bg-blue' },
       { id: 'matrix', name: 'Matrix', color: 'bg-purple' },
@@ -795,16 +789,13 @@ Here's the complete standalone HTML version:
       { id: 'reincidentes', name: 'Análises Reincidentes', color: 'bg-teal' },
       { id: 'cancelamentos', name: 'Análises Cancelamentos', color: 'bg-cyan' }
     ];
-
     // 🔄 State Management
     let people = [];
     let selectedPerson = null;
     let searchTerm = '';
     let filterDemand = '';
-
     // 💾 Storage
     const STORAGE_KEY = 'people_demands_v1';
-
     function loadFromStorage() {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -813,7 +804,6 @@ Here's the complete standalone HTML version:
         return INITIAL_PEOPLE;
       }
     }
-
     function saveToStorage() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(people));
@@ -821,66 +811,54 @@ Here's the complete standalone HTML version:
         console.error('Storage error:', error);
       }
     }
-
     // 🎨 Toast Notifications
     function showToast(message, type = 'success') {
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
       toast.textContent = message;
       document.body.appendChild(toast);
-
       setTimeout(() => {
         toast.style.animation = 'slideIn 0.3s ease reverse';
         setTimeout(() => toast.remove(), 300);
       }, 2500);
     }
-
     // 🎯 Assignment Logic
     function assignDemand(personId, demandId) {
       const person = people.find(p => p.id === personId);
       if (!person) return;
-
       if (person.demands.includes(demandId)) {
         showToast('Demanda já atribuída a este agente', 'warning');
         return;
       }
-
       person.demands.push(demandId);
       saveToStorage();
       render();
       showToast(`Demanda atribuída a ${person.name}`);
     }
-
     function removeDemand(personId, demandId) {
       const person = people.find(p => p.id === personId);
       if (!person) return;
-
       const demand = DEMANDS.find(d => d.id === demandId);
       person.demands = person.demands.filter(d => d !== demandId);
       saveToStorage();
       render();
       showToast(`${demand.name} removida de ${person.name}`);
     }
-
     function clearAllAssignments() {
       if (!confirm('Deseja realmente limpar todas as atribuições?')) return;
-      
       people.forEach(person => person.demands = []);
       saveToStorage();
       render();
       showToast('Todas as atribuições foram limpas');
     }
-
     // 📊 Statistics
     function getStatistics() {
       const total = people.length;
       const active = people.filter(p => p.demands.length > 0).length;
       const assignments = people.reduce((sum, p) => sum + p.demands.length, 0);
       const unassigned = DEMANDS.filter(d => !people.some(p => p.demands.includes(d.id)));
-
       return { total, active, assignments, unassigned };
     }
-
     // 🔍 Filtering
     function getFilteredPeople() {
       return people.filter(person => {
@@ -889,12 +867,10 @@ Here's the complete standalone HTML version:
         return matchesSearch && matchesDemand;
       });
     }
-
     // 🎨 Render Functions
     function renderPeopleGrid() {
       const grid = document.getElementById('peopleGrid');
       const filtered = getFilteredPeople();
-
       if (filtered.length === 0) {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column: 1 / -1;">
@@ -906,7 +882,6 @@ Here's the complete standalone HTML version:
         `;
         return;
       }
-
       grid.innerHTML = filtered.map(person => `
         <div class="person-card">
           <div class="person-header">
@@ -916,7 +891,6 @@ Here's the complete standalone HTML version:
               <div class="person-role">${person.role}</div>
             </div>
           </div>
-
           <div class="demands-list">
             ${person.demands.length === 0 ? 
               '<div class="empty-demands">Sem demandas</div>' :
@@ -939,7 +913,6 @@ Here's the complete standalone HTML version:
               }).join('')
             }
           </div>
-
           <button class="btn-assign" onclick="openModal('${person.id}')">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -949,14 +922,12 @@ Here's the complete standalone HTML version:
         </div>
       `).join('');
     }
-
     function renderStatistics() {
       const stats = getStatistics();
       document.getElementById('statTotal').textContent = stats.total;
       document.getElementById('statActive').textContent = stats.active;
       document.getElementById('statAssignments').textContent = stats.assignments;
       document.getElementById('statUnassigned').textContent = stats.unassigned.length;
-
       // Unassigned demands section
       const section = document.getElementById('unassignedSection');
       if (stats.unassigned.length > 0) {
@@ -972,28 +943,23 @@ Here's the complete standalone HTML version:
         section.style.display = 'none';
       }
     }
-
     function renderDemandFilter() {
       const select = document.getElementById('demandFilter');
       select.innerHTML = '<option value="">Todas as demandas</option>' +
         DEMANDS.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
     }
-
     function render() {
       renderPeopleGrid();
       renderStatistics();
     }
-
     // 🎯 Modal Functions
     function openModal(personId) {
       selectedPerson = people.find(p => p.id === personId);
       if (!selectedPerson) return;
-
       document.getElementById('modalAvatar').textContent = selectedPerson.name.charAt(0);
       document.getElementById('modalName').textContent = selectedPerson.name;
       document.getElementById('modalCount').textContent = 
         `${selectedPerson.demands.length} demanda(s) atribuída(s)`;
-
       // Current assignments
       const currentSection = document.getElementById('currentAssignments');
       if (selectedPerson.demands.length > 0) {
@@ -1016,7 +982,6 @@ Here's the complete standalone HTML version:
       } else {
         currentSection.style.display = 'none';
       }
-
       // Available demands
       document.getElementById('availableList').innerHTML = DEMANDS.map(demand => {
         const isAssigned = selectedPerson.demands.includes(demand.id);
@@ -1032,36 +997,29 @@ Here's the complete standalone HTML version:
           </button>
         `;
       }).join('');
-
       document.getElementById('modalOverlay').classList.add('active');
     }
-
     function closeModal() {
       document.getElementById('modalOverlay').classList.remove('active');
       selectedPerson = null;
     }
-
     // 🎮 Event Listeners
     document.getElementById('toggleFilters').addEventListener('click', function() {
       const filters = document.getElementById('filtersSection');
       const isActive = filters.classList.toggle('active');
       this.classList.toggle('active', isActive);
     });
-
     document.getElementById('clearAll').addEventListener('click', clearAllAssignments);
-
     document.getElementById('searchInput').addEventListener('input', function(e) {
       searchTerm = e.target.value;
       render();
       updateClearFiltersButton();
     });
-
     document.getElementById('demandFilter').addEventListener('change', function(e) {
       filterDemand = e.target.value;
       render();
       updateClearFiltersButton();
     });
-
     document.getElementById('clearFilters').addEventListener('click', function() {
       searchTerm = '';
       filterDemand = '';
@@ -1070,19 +1028,15 @@ Here's the complete standalone HTML version:
       render();
       updateClearFiltersButton();
     });
-
     document.getElementById('closeModal').addEventListener('click', closeModal);
     document.getElementById('closeModalBtn').addEventListener('click', closeModal);
-
     document.getElementById('modalOverlay').addEventListener('click', function(e) {
       if (e.target === this) closeModal();
     });
-
     function updateClearFiltersButton() {
       const btn = document.getElementById('clearFilters');
       btn.style.display = (searchTerm || filterDemand) ? 'block' : 'none';
     }
-
     // 🚀 Initialize
     people = loadFromStorage();
     renderDemandFilter();
