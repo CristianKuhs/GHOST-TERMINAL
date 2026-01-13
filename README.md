@@ -752,7 +752,6 @@
         <div class="modal-section-title">Demandas Disponíveis</div>
         <div id="availableList" class="available-grid"></div>
       </div>
-
       <button class="btn-close-modal" id="closeModalBtn">Concluir</button>
     </div>
   </div>
@@ -764,15 +763,16 @@
       { id: '3', name: 'Emanuela', role: 'Agente', demands: [] },
       { id: '4', name: 'Emilly', role: 'Agente', demands: [] },
       { id: '5', name: 'Felipe', role: 'Agente', demands: [] },
-      { id: '6', name: 'Kaua', role: 'Agente', demands: [] },
-      { id: '7', name: 'Kauane', role: 'Agente', demands: [] },
-      { id: '8', name: 'Luiz', role: 'Agente', demands: [] },
-      { id: '9', name: 'Pamela', role: 'Agente', demands: [] },
-      { id: '10', name: 'Patrick', role: 'Agente', demands: [] },
-      { id: '11', name: 'Pedro', role: 'Agente', demands: [] },
-      { id: '12', name: 'Richard', role: 'Agente', demands: [] },
-      { id: '13', name: 'Thais', role: 'Agente', demands: [] },
-      { id: '14', name: 'Vitória', role: 'Agente', demands: [] }
+      { id: '6', name: 'Cristian', role: 'Agente', demands: [] },
+      { id: '7', name: 'Kaua', role: 'Agente', demands: [] },
+      { id: '8', name: 'Kauane', role: 'Agente', demands: [] },
+      { id: '9', name: 'Luiz', role: 'Agente', demands: [] },
+      { id: '10', name: 'Pamela', role: 'Agente', demands: [] },
+      { id: '11', name: 'Patrick', role: 'Agente', demands: [] },
+      { id: '12', name: 'Pedro', role: 'Agente', demands: [] },
+      { id: '13', name: 'Richard', role: 'Agente', demands: [] },
+      { id: '14', name: 'Thais', role: 'Agente', demands: [] },
+      { id: '15', name: 'Vitória', role: 'Agente', demands: [] }
     ];
     const DEMANDS = [
       { id: 'nivel2', name: 'Nível II', color: 'bg-blue' },
