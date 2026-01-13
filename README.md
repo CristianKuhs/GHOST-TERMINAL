@@ -763,7 +763,7 @@
       { id: '3', name: 'Emanuela', role: 'Agente', demands: [] },
       { id: '4', name: 'Emilly', role: 'Agente', demands: [] },
       { id: '5', name: 'Felipe', role: 'Agente', demands: [] },
-      { id: '6', name: 'Cristian', role: 'Agente', demands: [] },
+      { id: '6', name: 'João', role: 'Agente', demands: [] },
       { id: '7', name: 'Kaua', role: 'Agente', demands: [] },
       { id: '8', name: 'Kauane', role: 'Agente', demands: [] },
       { id: '9', name: 'Luiz', role: 'Agente', demands: [] },
