@@ -178,7 +178,7 @@
     .empty-state svg{width:40px;height:40px;color:var(--text-secondary);margin:0 auto 8px}
     .empty-state p{color:var(--text-secondary);font-size:0.95rem}
     /* Color utility classes kept for JS mapping. Ensure text color contrasts when applied. */
-    .bg-blue{background-color:var(--blue-500);color:var(--primary-contrast}
+    .bg-blue{background-color:var(--blue-500);color:var(--primary-contrast)}
     .bg-purple{background-color:var(--purple-500);color:var(--primary-contrast)}
     .bg-yellow{background-color:var(--yellow-400);color:var(--bg-900)}
     .bg-green{background-color:var(--green-400);color:var(--bg-900)}
@@ -188,10 +188,8 @@
     .bg-red{background-color:var(--red-500);color:var(--primary-contrast)}
     .bg-teal{background-color:var(--teal-500);color:var(--primary-contrast)}
     .bg-cyan{background-color:var(--cyan-500);color:var(--bg-900)}
-
     /* small accessibility helper: ensure SVG icons inherit color from parent */
     svg{display:block}
-
     /* small responsive tweaks */
     @media(max-width:420px){h1{font-size:1rem}.stat-value{font-size:1.05rem}}
   </style>
@@ -259,7 +257,6 @@
       </div>
     </div>
   </header>
-
   <!-- Main Content -->
   <main>
     <div id="peopleGrid" class="people-grid" aria-live="polite"></div>
@@ -304,10 +301,12 @@
   </div>
   <script>
     /*
-      Nota sobre mudanças:
-      - Mantive a lógica original do JS e as classes `bg-...` usadas para colorir demandas.
-      - O CSS agora garante contraste entre dots/tags e o fundo por meio de bordas e escolha de texto.
-      - Pequenas melhorias de acessibilidade: `aria-*` para seções, `aria-live` no grid.
+      Melhorias aplicadas nesta versão:
+      - Removidos event handlers inline gerados via template strings.
+      - Sanitização de texto antes de inserção em innerHTML (`escapeHtml`).
+      - Delegação de eventos para reduzir ligação de listeners e evitar XSS indireto.
+      - Gerenciamento de foco no modal (trap focus básico) e tecla Escape para fechar.
+      - Correções de estabilidade e clareza no fluxo de render.
     */
     // Dados iniciais
     const INITIAL_PEOPLE = [
@@ -316,7 +315,7 @@
       { id: '3', name: 'Emanuela', role: 'Agente', demands: [] },
       { id: '4', name: 'Emilly', role: 'Agente', demands: [] },
       { id: '5', name: 'Felipe', role: 'Agente', demands: [] },
-      { id: '6', name: 'Cristian', role: 'Agente', demands: [] },
+      { id: '6', name: 'João', role: 'Agente', demands: [] },
       { id: '7', name: 'Kaua', role: 'Agente', demands: [] },
       { id: '8', name: 'Kauane', role: 'Agente', demands: [] },
       { id: '9', name: 'Luiz', role: 'Agente', demands: [] },
@@ -340,17 +339,26 @@
       { id: 'cancelamentos', name: 'Análises Cancelamentos', color: 'bg-cyan' }
     ];
     let people = [];
+    let people = [];
     let selectedPerson = null;
     let searchTerm = '';
     let filterDemand = '';
     const STORAGE_KEY = 'people_demands_v1';
     function loadFromStorage(){
-      try{const stored = localStorage.getItem(STORAGE_KEY);return stored?JSON.parse(stored):INITIAL_PEOPLE}catch{return INITIAL_PEOPLE}
+      try{const stored = localStorage.getItem(STORAGE_KEY);return stored?JSON.parse(stored):JSON.parse(JSON.stringify(INITIAL_PEOPLE))}catch{return JSON.parse(JSON.stringify(INITIAL_PEOPLE))}
     }
     function saveToStorage(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(people))}catch(e){console.error('Storage error',e)}}
     function showToast(message,type='success'){
       const toast=document.createElement('div');toast.className=`toast ${type}`;toast.textContent=message;document.body.appendChild(toast);
       setTimeout(()=>{toast.style.animation='slideIn .3s ease reverse';setTimeout(()=>toast.remove(),300)},2500);
+    }
+    function escapeHtml(str){
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
     }
     function assignDemand(personId,demandId){
       const person=people.find(p=>p.id===personId);if(!person)return; if(person.demands.includes(demandId)){showToast('Demanda já atribuída a este agente','warning');return}
@@ -366,74 +374,127 @@
       const grid=document.getElementById('peopleGrid');const filtered=getFilteredPeople();
       if(filtered.length===0){grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg><p>Nenhum agente encontrado</p></div>`;return}
       grid.innerHTML=filtered.map(person=>{
-        return `<div class="person-card">
+        const nameEsc = escapeHtml(person.name);
+        const roleEsc = escapeHtml(person.role);
+        const avatar = escapeHtml(person.name.charAt(0));
+        return `
+        <div class="person-card" data-person-id="${person.id}">
           <div class="person-header">
-            <div class="person-avatar">${person.name.charAt(0)}</div>
+            <div class="person-avatar">${avatar}</div>
             <div class="person-info">
-              <div class="person-name">${person.name}</div>
-              <div class="person-role">${person.role}</div>
+              <div class="person-name">${nameEsc}</div>
+              <div class="person-role">${roleEsc}</div>
             </div>
           </div>
           <div class="demands-list">
-            ${person.demands.length===0?'<div class="empty-demands">Sem demandas</div>':person.demands.map(demandId=>{const demand=DEMANDS.find(d=>d.id===demandId);if(!demand)return'';return `
-              <div class="demand-item">
-                <div class="demand-info">
-                  <div class="demand-dot ${demand.color}" aria-hidden></div>
-                  <span class="demand-name">${demand.name}</span>
-                </div>
-                <button class="demand-remove" onclick="removeDemand('${person.id}','${demandId}')" aria-label="Remover ${demand.name}">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-              </div>
-            `}).join('')}
+            ${person.demands.length===0?'<div class="empty-demands">Sem demandas</div>':person.demands.map(demandId=>{const demand=DEMANDS.find(d=>d.id===demandId);if(!demand)return'';const dName=escapeHtml(demand.name);return `
+                  <div class="demand-item" data-person-id="${person.id}" data-demand-id="${demand.id}">
+                    <div class="demand-info">
+                      <div class="demand-dot ${demand.color}" aria-hidden></div>
+                      <span class="demand-name">${dName}</span>
+                    </div>
+                    <button class="demand-remove" type="button" data-action="remove-demand" data-person="${person.id}" data-demand="${demand.id}" aria-label="Remover ${dName}">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                `}).join('')}
           </div>
-          <button class="btn-assign" onclick="openModal('${person.id}')">
+          <button class="btn-assign" type="button" data-action="open-modal" data-person="${person.id}">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Atribuir
           </button>
-        </div>`
-      }).join('')
+        </div>
+      `}).join('')
     }
     function renderStatistics(){
       const stats=getStatistics();document.getElementById('statTotal').textContent=stats.total;document.getElementById('statActive').textContent=stats.active;document.getElementById('statAssignments').textContent=stats.assignments;document.getElementById('statUnassigned').textContent=stats.unassigned.length;
       const section=document.getElementById('unassignedSection');
-      if(stats.unassigned.length>0){section.style.display='block';document.getElementById('unassignedCount').textContent=stats.unassigned.length;document.getElementById('unassignedList').innerHTML=stats.unassigned.map(d=>`<div class="unassigned-item"><div class="demand-dot ${d.color}" aria-hidden></div><span>${d.name}</span></div>`).join('')}else{section.style.display='none'}
+      if(stats.unassigned.length>0){section.style.display='block';document.getElementById('unassignedCount').textContent=stats.unassigned.length;document.getElementById('unassignedList').innerHTML=stats.unassigned.map(d=>`<div class="unassigned-item"><div class="demand-dot ${d.color}" aria-hidden></div><span>${escapeHtml(d.name)}</span></div>`).join('')}else{section.style.display='none'}
     }
-    function renderDemandFilter(){const select=document.getElementById('demandFilter');select.innerHTML='<option value="">Todas as demandas</option>'+DEMANDS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}
+    function renderDemandFilter(){const select=document.getElementById('demandFilter');select.innerHTML='<option value="">Todas as demandas</option>'+DEMANDS.map(d=>`<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
     function render(){renderPeopleGrid();renderStatistics()}
-    function openModal(personId){selectedPerson=people.find(p=>p.id===personId);if(!selectedPerson)return;document.getElementById('modalAvatar').textContent=selectedPerson.name.charAt(0);document.getElementById('modalName').textContent=selectedPerson.name;document.getElementById('modalCount').textContent=`${selectedPerson.demands.length} demanda(s) atribuída(s)`;
-      const currentSection=document.getElementById('currentAssignments');
-      if(selectedPerson.demands.length>0){currentSection.style.display='block';document.getElementById('currentList').innerHTML=selectedPerson.demands.map(demandId=>{const demand=DEMANDS.find(d=>d.id===demandId);if(!demand)return'';return `
-            <div class="modal-demand-item">
+    // Modal focus management
+    let lastFocused = null;
+    function openModal(personId){
+      selectedPerson = people.find(p=>p.id===personId);if(!selectedPerson)return;
+      document.getElementById('modalAvatar').textContent = escapeHtml(selectedPerson.name.charAt(0));
+      document.getElementById('modalName').textContent = escapeHtml(selectedPerson.name);
+      document.getElementById('modalCount').textContent = `${selectedPerson.demands.length} demanda(s) atribuída(s)`;
+      const currentSection = document.getElementById('currentAssignments');
+      if(selectedPerson.demands.length>0){
+        currentSection.style.display='block';
+        document.getElementById('currentList').innerHTML = selectedPerson.demands.map(demandId=>{const demand=DEMANDS.find(d=>d.id===demandId);if(!demand)return'';const dn=escapeHtml(demand.name);return `
+            <div class="modal-demand-item" data-demand-id="${demand.id}">
               <div class="modal-demand-info">
                 <div class="modal-demand-dot ${demand.color}" aria-hidden></div>
-                <span class="modal-demand-name">${demand.name}</span>
+                <span class="modal-demand-name">${dn}</span>
               </div>
-              <button class="btn-remove" onclick="removeDemand('${selectedPerson.id}','${demandId}'); closeModal();">Remover</button>
+              <button class="btn-remove" type="button" data-action="remove-demand" data-person="${selectedPerson.id}" data-demand="${demand.id}">Remover</button>
             </div>
-          `}).join('')}else{currentSection.style.display='none'}
-      document.getElementById('availableList').innerHTML=DEMANDS.map(demand=>{const isAssigned=selectedPerson.demands.includes(demand.id);return `
-        <button class="available-item" ${isAssigned?'disabled':''} onclick="${isAssigned?'':`assignDemand('${selectedPerson.id}','${demand.id}')`}">
+          `}).join('')
+      } else {
+        currentSection.style.display='none';
+        document.getElementById('currentList').innerHTML='';
+      }
+      document.getElementById('availableList').innerHTML = DEMANDS.map(demand=>{const isAssigned=selectedPerson.demands.includes(demand.id);const dn=escapeHtml(demand.name);return `
+        <button class="available-item" type="button" ${isAssigned?'disabled':''} data-action="assign-demand" data-person="${selectedPerson.id}" data-demand="${demand.id}">
           <div class="modal-demand-dot ${demand.color}" aria-hidden></div>
-          <span class="modal-demand-name">${demand.name}</span>
+          <span class="modal-demand-name">${dn}</span>
           ${isAssigned?'<span class="assigned-badge">✓ Atribuída</span>':''}
         </button>
       `}).join('');
-      const overlay=document.getElementById('modalOverlay');overlay.classList.add('active');overlay.setAttribute('aria-hidden','false');
+      const overlay = document.getElementById('modalOverlay');overlay.classList.add('active');overlay.setAttribute('aria-hidden','false');
+      lastFocused = document.activeElement;
+      const focusable = overlay.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if(focusable) focusable.focus();
+      document.addEventListener('keydown', handleModalKeydown);
     }
-    function closeModal(){const overlay=document.getElementById('modalOverlay');overlay.classList.remove('active');overlay.setAttribute('aria-hidden','true');selectedPerson=null}
-    // Event listeners
-    document.getElementById('toggleFilters').addEventListener('click',function(){const filters=document.getElementById('filtersSection');const isActive=filters.classList.toggle('active');this.classList.toggle('active',isActive);filters.setAttribute('aria-hidden',!isActive)});
-    document.getElementById('clearAll').addEventListener('click',clearAllAssignments);
-    document.getElementById('searchInput').addEventListener('input',function(e){searchTerm=e.target.value;render();updateClearFiltersButton()});
-    document.getElementById('demandFilter').addEventListener('change',function(e){filterDemand=e.target.value;render();updateClearFiltersButton()});
-    document.getElementById('clearFilters').addEventListener('click',function(){searchTerm='';filterDemand='';document.getElementById('searchInput').value='';document.getElementById('demandFilter').value='';render();updateClearFiltersButton()});
-    document.getElementById('closeModal').addEventListener('click',closeModal);
-    document.getElementById('closeModalBtn').addEventListener('click',closeModal);
-    document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
-    function updateClearFiltersButton(){const btn=document.getElementById('clearFilters');btn.style.display=(searchTerm||filterDemand)?'block':'none'}
+    function closeModal(){
+      const overlay=document.getElementById('modalOverlay');overlay.classList.remove('active');overlay.setAttribute('aria-hidden','true');selectedPerson=null;document.removeEventListener('keydown', handleModalKeydown);
+      if(lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+    }
+    function handleModalKeydown(e){
+      if(e.key === 'Escape') { closeModal(); return }
+      if(e.key === 'Tab') {
+        const overlay = document.getElementById('modalOverlay');
+        const focusable = Array.from(overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(el=>!el.disabled);
+        if(focusable.length===0) { e.preventDefault(); return }
+        const idx = focusable.indexOf(document.activeElement);
+        if(e.shiftKey){
+          if(idx === 0){ focusable[focusable.length-1].focus(); e.preventDefault(); }
+        } else {
+          if(idx === focusable.length-1){ focusable[0].focus(); e.preventDefault(); }
+        }
+      }
+    }
+    // Event delegation for dynamic elements
+    document.addEventListener('click', function(e){
+      const removeBtn = e.target.closest('[data-action="remove-demand"]');
+      if(removeBtn){
+        const personId = removeBtn.dataset.person; const demandId = removeBtn.dataset.demand; removeDemand(personId,demandId); return;
+      }
+      const openBtn = e.target.closest('[data-action="open-modal"]');
+      if(openBtn){ openModal(openBtn.dataset.person); return; }
+      const assignBtn = e.target.closest('[data-action="assign-demand"]');
+      if(assignBtn){ const personId = assignBtn.dataset.person; const demandId = assignBtn.dataset.demand; assignDemand(personId,demandId); return; }
+    });
+    // Other listeners (static elements)
+    const toggleFiltersBtn = document.getElementById('toggleFilters');
+    toggleFiltersBtn.addEventListener('click', function(){
+      const filters = document.getElementById('filtersSection');
+      const isActive = filters.classList.toggle('active');
+      this.classList.toggle('active', isActive);
+      this.setAttribute('aria-expanded', String(isActive));
+      filters.setAttribute('aria-hidden', String(!isActive));
+    });
+    document.getElementById('clearAll').addEventListener('click', clearAllAssignments);
+    document.getElementById('searchInput').addEventListener('input', function(e){ searchTerm = e.target.value; render(); updateClearFiltersButton(); });
+    document.getElementById('demandFilter').addEventListener('change', function(e){ filterDemand = e.target.value; render(); updateClearFiltersButton(); });
+    document.getElementById('clearFilters').addEventListener('click', function(){ searchTerm=''; filterDemand=''; document.getElementById('searchInput').value=''; document.getElementById('demandFilter').value=''; render(); updateClearFiltersButton(); });
+    document.getElementById('closeModal').addEventListener('click', closeModal);
+    document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+    document.getElementById('modalOverlay').addEventListener('click', function(e){ if(e.target === this) closeModal(); });
+    function updateClearFiltersButton(){ const btn=document.getElementById('clearFilters'); btn.style.display=(searchTerm||filterDemand)?'block':'none' }
     // Inicialização
-    people=loadFromStorage();renderDemandFilter();render();
+    people = loadFromStorage(); renderDemandFilter(); render();
   </script>
-</body>
-</html>
