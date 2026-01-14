@@ -749,7 +749,6 @@
           font-size: 1.05rem;
         }
       }
-
       /* Observações internas */
       .notes-overlay,
       .schedule-card {
@@ -784,32 +783,31 @@
       .notes-list {display:flex;flex-direction:column;gap:8px}
       .note-item{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(0,0,0,0.02));padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);}
       .note-meta{font-size:12px;color:var(--text-secondary);margin-bottom:6px}
-      /* Schedule (Escalas) */
-      .schedule-section{margin-top:18px}
-      .schedule-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-      .schedule-card{padding:12px}
-      .schedule-card h3{margin-bottom:8px;color:var(--text-secondary);font-size:14px}
-      .shift-table{width:100%;border-collapse:collapse}
-      .shift-table th,.shift-table td{border:1px solid var(--border);padding:8px;text-align:left;font-size:0.95rem}
-      .shift-table th{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(0,0,0,0.02));color:var(--text-secondary)}
-      .shift-select{width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text-primary)}
-    </style>
-  </head>
-  <body>
-    <!-- Header -->
-    <header>
-      <div class="header-container">
-        <div class="header-top">
-          <div class="header-title">
-            <div class="header-icon" aria-hidden>
-              <svg
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path
-                  stroke-linecap="round"
+      /* ENHANCEMENT - NON-DESTRUCTIVE: Desktop layout for notes panel */
+      .notes-panel .notes-inner {display:block}
+      .notes-people {display:none}
+      .notes-people ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+      .notes-people li{padding:8px;border-radius:6px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(0,0,0,0.02));cursor:pointer;color:var(--text-primary)}
+      .notes-people li:hover, .notes-people li:focus{outline:none;border-color:var(--primary)}
+      .notes-people li.active{background:rgba(37,99,235,0.08);border-color:rgba(37,99,235,0.12)}
+      .notes-content {margin-top:12px}
+      /* ENHANCEMENT - NON-DESTRUCTIVE: Desktop grid for notes */
+      @media (min-width: 900px) {
+        .notes-panel {padding:16px}
+        .notes-panel .notes-inner {display:grid;grid-template-columns:260px 1fr;gap:12px}
+        .notes-people {display:block}
+        .notes-content {margin-top:0}
+      }
+      /* ENHANCEMENT - NON-DESTRUCTIVE: Improve desktop density for people grid */
+      @media (min-width: 1024px) {
+        .people-grid {grid-template-columns: repeat(4, 1fr); gap: 16px}
+      }
+      @media (min-width: 1400px) {
+        .people-grid {grid-template-columns: repeat(5, 1fr);}
+        .header-container, main {max-width: 2200px}
+      }
+      /* ENHANCEMENT - NON-DESTRUCTIVE: subtle focus for interactive elements */
+      button:focus, select:focus, textarea:focus {box-shadow: 0 0 0 4px rgba(37,99,235,0.08);outline:none}
                   stroke-linejoin="round"
                   stroke-width="2"
                   d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
@@ -961,8 +959,16 @@
             <button id="closeNotes" class="btn-clear">Fechar</button>
           </div>
         </div>
-        <div id="notesContainer">
-          <div class="notes-list" id="notesList"></div>
+        <!-- ENHANCEMENT - NON-DESTRUCTIVE: notes inner layout with left agent list (desktop) and right content -->
+        <div class="notes-inner">
+          <div class="notes-people" aria-hidden="false">
+            <ul id="notesPeopleList"></ul>
+          </div>
+          <div class="notes-content">
+            <div id="notesContainer">
+              <div class="notes-list" id="notesList"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1030,7 +1036,7 @@
         { id: "3", name: "Emanuela", role: "Agente", demands: [] },
         { id: "4", name: "Emilly", role: "Agente", demands: [] },
         { id: "5", name: "Felipe", role: "Agente", demands: [] },
-        { id: "6", name: "Cristian", role: "Agente", demands: [] },
+        { id: "6", name: "João", role: "Agente", demands: [] },
         { id: "7", name: "Kaua", role: "Agente", demands: [] },
         { id: "8", name: "Kauane", role: "Agente", demands: [] },
         { id: "9", name: "Luiz", role: "Agente", demands: [] },
@@ -1281,6 +1287,7 @@
           section.style.display = "none";
         }
       }
+
       function renderDemandFilter() {
         const select = document.getElementById("demandFilter");
         select.innerHTML =
@@ -1477,6 +1484,7 @@
         const btn = document.getElementById("clearFilters");
         btn.style.display = searchTerm || filterDemand ? "block" : "none";
       }
+
       /* -----------------------
          Theme toggle (Light / Dark)
          - Persiste preferência no localStorage
@@ -1529,6 +1537,38 @@
           .join("");
         sel.addEventListener("change", function () {
           renderNotesList(this.value);
+          highlightPersonInList(this.value);
+        });
+        renderNotesPeopleList();
+      }
+      /* ENHANCEMENT - NON-DESTRUCTIVE: render a clickable people list for desktop */
+      function renderNotesPeopleList() {
+        const ul = document.getElementById("notesPeopleList");
+        if (!ul) return;
+        ul.innerHTML = people
+          .map((p) => `<li tabindex="0" data-person="${p.id}">${escapeHtml(p.name)}</li>`)
+          .join("");
+        ul.querySelectorAll('li').forEach((li) => {
+          li.addEventListener('click', function () {
+            const pid = this.dataset.person;
+            const sel = document.getElementById('notesPersonSelect');
+            sel.value = pid;
+            renderNotesList(pid);
+            highlightPersonInList(pid);
+          });
+          li.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              this.click();
+            }
+          });
+        });
+      }
+      function highlightPersonInList(personId) {
+        const ul = document.getElementById("notesPeopleList");
+        if (!ul) return;
+        ul.querySelectorAll('li').forEach(li => {
+          if (li.dataset.person === personId) li.classList.add('active'); else li.classList.remove('active');
         });
       }
       function renderNotesList(personId) {
@@ -1562,7 +1602,9 @@
         renderNotesPersonSelect();
         const sel = document.getElementById("notesPersonSelect");
         sel.focus();
-        renderNotesList(sel.value || (people[0] && people[0].id));
+        const pid = sel.value || (people[0] && people[0].id);
+        renderNotesList(pid);
+        highlightPersonInList(pid);
       });
       document.getElementById("closeNotes").addEventListener("click", function () {
         document.getElementById("notesOverlay").classList.remove("active");
@@ -1657,7 +1699,6 @@
           showToast("Observação removida");
         }
       });
-
       /* -----------------------
          Escala (Sábado / Domingo)
       ------------------------*/
