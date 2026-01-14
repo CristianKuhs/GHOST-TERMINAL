@@ -59,6 +59,19 @@
         --radius: 8px;
         --radius-lg: 12px;
       }
+      /* TEMA CLARO (light mode) */
+      html.light-mode {
+        --bg-900: #f8fafc;
+        --bg-800: #f1f5f9;
+        --surface: #ffffff;
+        --surface-1: #f8fafc;
+        --surface-2: #e2e8f0;
+        --text-primary: #1e293b;
+        --text-secondary: #475569;
+        --muted: #94a3b8;
+        --border: #cbd5e1;
+        --dot-border: rgba(0, 0, 0, 0.08);
+      }
       /* Base layout */
       html,
       body {
@@ -736,6 +749,50 @@
           font-size: 1.05rem;
         }
       }
+
+      /* Observações internas */
+      .notes-overlay,
+      .schedule-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+      }
+      .notes-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 90;
+        padding: 20px;
+        background: rgba(0,0,0,0.4);
+      }
+      .notes-overlay.active {
+        display: flex;
+      }
+      .notes-panel {
+        width: 920px;
+        max-width: calc(100% - 40px);
+        max-height: calc(100% - 80px);
+        overflow: auto;
+        padding: 18px;
+      }
+      .notes-header {
+        display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px
+      }
+      .notes-list {display:flex;flex-direction:column;gap:8px}
+      .note-item{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(0,0,0,0.02));padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);}
+      .note-meta{font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+      /* Schedule (Escalas) */
+      .schedule-section{margin-top:18px}
+      .schedule-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      .schedule-card{padding:12px}
+      .schedule-card h3{margin-bottom:8px;color:var(--text-secondary);font-size:14px}
+      .shift-table{width:100%;border-collapse:collapse}
+      .shift-table th,.shift-table td{border:1px solid var(--border);padding:8px;text-align:left;font-size:0.95rem}
+      .shift-table th{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(0,0,0,0.02));color:var(--text-secondary)}
+      .shift-select{width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text-primary)}
     </style>
   </head>
   <body>
@@ -783,6 +840,14 @@
               Filtros
             </button>
             <button id="clearAll" class="btn-clear">Limpar Tudo</button>
+            <button id="openNotes" class="btn-filter" title="Observações internas">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h8M8 16h5M21 12v6a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg>
+              Observações
+            </button>
+            <button id="themeToggle" class="btn-filter" aria-pressed="false" title="Alternar tema (claro/escuro)">
+              <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1M12 20v1M4.2 4.2l.7.7M18.1 18.1l.7.7M1 12h1M22 12h1M4.2 19.8l.7-.7M18.1 5.9l.7-.7M12 5a7 7 0 100 14 7 7 0 000-14z"/></svg>
+              Tema
+            </button>
           </div>
         </div>
         <!-- Statistics -->
@@ -857,6 +922,50 @@
         <div id="unassignedList" class="unassigned-list"></div>
       </div>
     </main>
+    <!-- Escala de Final de Semana -->
+    <section id="weekendSchedule" class="schedule-section" aria-label="Escala de final de semana">
+      <div class="header-container">
+        <div class="schedule-grid">
+          <div class="schedule-card" id="saturdayCard">
+            <h3>🟦 SÁBADO</h3>
+            <table class="shift-table" id="saturdayTable" aria-hidden="false">
+              <thead>
+                <tr><th>Horário</th><th>Entrada 01</th><th>Saída 01</th><th>Entrada 02</th><th>Saída 02</th><th>Agente</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="schedule-card" id="sundayCard">
+            <h3>🟩 DOMINGO</h3>
+            <table class="shift-table" id="sundayTable" aria-hidden="false">
+              <thead>
+                <tr><th>Horário</th><th>Entrada 01</th><th>Saída 01</th><th>Entrada 02</th><th>Saída 02</th><th>Agente</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- Observações Internas (overlay separado) -->
+    <div id="notesOverlay" class="notes-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="notes-panel" role="document">
+        <div class="notes-header">
+          <div style="display:flex;gap:8px;align-items:center">
+            <strong>Observações Internas</strong>
+            <label style="font-size:12px;color:var(--text-secondary)">Agente:</label>
+            <select id="notesPersonSelect" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-primary)"></select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="addNoteBtn" class="btn-filter">+ Nova nota</button>
+            <button id="closeNotes" class="btn-clear">Fechar</button>
+          </div>
+        </div>
+        <div id="notesContainer">
+          <div class="notes-list" id="notesList"></div>
+        </div>
+      </div>
+    </div>
     <!-- Modal -->
     <div
       id="modalOverlay"
@@ -921,7 +1030,7 @@
         { id: "3", name: "Emanuela", role: "Agente", demands: [] },
         { id: "4", name: "Emilly", role: "Agente", demands: [] },
         { id: "5", name: "Felipe", role: "Agente", demands: [] },
-        { id: "6", name: "João", role: "Agente", demands: [] },
+        { id: "6", name: "Cristian", role: "Agente", demands: [] },
         { id: "7", name: "Kaua", role: "Agente", demands: [] },
         { id: "8", name: "Kauane", role: "Agente", demands: [] },
         { id: "9", name: "Luiz", role: "Agente", demands: [] },
@@ -1368,10 +1477,266 @@
         const btn = document.getElementById("clearFilters");
         btn.style.display = searchTerm || filterDemand ? "block" : "none";
       }
+      /* -----------------------
+         Theme toggle (Light / Dark)
+         - Persiste preferência no localStorage
+         - Aplica classe `light-mode` no <html>
+      ------------------------*/
+      const THEME_KEY = "gt_theme_v1";
+      function applyTheme(theme) {
+        const root = document.documentElement;
+        if (theme === "light") {
+          root.classList.add("light-mode");
+          document.getElementById("themeToggle").setAttribute("aria-pressed", "true");
+        } else {
+          root.classList.remove("light-mode");
+          document.getElementById("themeToggle").setAttribute("aria-pressed", "false");
+        }
+      }
+      function initTheme() {
+        try {
+          const stored = localStorage.getItem(THEME_KEY);
+          if (stored === "light" || stored === "dark") {
+            applyTheme(stored === "light" ? "light" : "dark");
+          } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+            applyTheme("light");
+          } else {
+            applyTheme("dark");
+          }
+        } catch (e) {
+          applyTheme("dark");
+        }
+      }
+      document.getElementById("themeToggle").addEventListener("click", function () {
+        const isLight = document.documentElement.classList.toggle("light-mode");
+        try {
+          localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
+        } catch (e) {}
+        this.setAttribute("aria-pressed", String(isLight));
+      });
+      /* -----------------------
+         Observações internas (notas por usuário)
+      ------------------------*/
+      function ensureNotesOnPeople(list) {
+        list.forEach((p) => {
+          if (!Array.isArray(p.notes)) p.notes = [];
+        });
+      }
+      function renderNotesPersonSelect() {
+        const sel = document.getElementById("notesPersonSelect");
+        sel.innerHTML = people
+          .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+          .join("");
+        sel.addEventListener("change", function () {
+          renderNotesList(this.value);
+        });
+      }
+      function renderNotesList(personId) {
+        const list = document.getElementById("notesList");
+        const p = people.find((x) => x.id === personId);
+        if (!p) {
+          list.innerHTML = "<p class=empty-state>Nenhum agente selecionado.</p>";
+          return;
+        }
+        if (!p.notes || p.notes.length === 0) {
+          list.innerHTML = '<p class="empty-state">Nenhuma observação registrada.</p>';
+          return;
+        }
+        list.innerHTML = p.notes
+          .map((n, idx) => {
+            return `<div class="note-item" data-note="${idx}">
+              <div class="note-meta">${escapeHtml(n.author || p.name)} • ${escapeHtml(n.date || "—")}</div>
+              <div class="note-body">${escapeHtml(n.text)}</div>
+              <div style="margin-top:8px;display:flex;gap:8px">
+                <button class="btn-filter" data-action="edit-note" data-person="${p.id}" data-index="${idx}">Editar</button>
+                <button class="btn-clear" data-action="delete-note" data-person="${p.id}" data-index="${idx}">Excluir</button>
+              </div>
+            </div>`;
+          })
+          .join("");
+      }
+      // Notes CRUD via event delegation
+      document.getElementById("openNotes").addEventListener("click", function () {
+        document.getElementById("notesOverlay").classList.add("active");
+        document.getElementById("notesOverlay").setAttribute("aria-hidden", "false");
+        renderNotesPersonSelect();
+        const sel = document.getElementById("notesPersonSelect");
+        sel.focus();
+        renderNotesList(sel.value || (people[0] && people[0].id));
+      });
+      document.getElementById("closeNotes").addEventListener("click", function () {
+        document.getElementById("notesOverlay").classList.remove("active");
+        document.getElementById("notesOverlay").setAttribute("aria-hidden", "true");
+      });
+      document.getElementById("addNoteBtn").addEventListener("click", function () {
+        const sel = document.getElementById("notesPersonSelect");
+        const pid = sel.value;
+        const container = document.getElementById("notesList");
+        const form = document.createElement("div");
+        form.className = "note-item";
+        form.innerHTML = `
+          <div class="note-meta">Nova nota • agora</div>
+          <textarea id="newNoteText" style="width:100%;min-height:80px;padding:8px;margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--text-primary);border-radius:6px"></textarea>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button id="saveNewNote" class="btn-filter">Salvar</button>
+            <button id="cancelNewNote" class="btn-clear">Cancelar</button>
+          </div>
+        `;
+        container.prepend(form);
+        document.getElementById("newNoteText").focus();
+        document.getElementById("saveNewNote").addEventListener("click", function () {
+          const text = document.getElementById("newNoteText").value.trim();
+          if (!text) return showErrorToast("Texto da nota não pode ficar vazio");
+          const p = people.find((x) => x.id === pid);
+          if (!p) return showErrorToast("Agente não encontrado");
+          p.notes = p.notes || [];
+          p.notes.unshift({ text, author: "Usuário", date: new Date().toLocaleString() });
+          if (!saveToStorage()) {
+            p.notes.shift();
+            return;
+          }
+          renderNotesList(pid);
+          showToast("Observação adicionada");
+        });
+        document.getElementById("cancelNewNote").addEventListener("click", function () {
+          form.remove();
+        });
+      });
+      document.getElementById("notesList").addEventListener("click", function (e) {
+        const editBtn = e.target.closest('[data-action="edit-note"]');
+        if (editBtn) {
+          const pid = editBtn.dataset.person;
+          const idx = Number(editBtn.dataset.index);
+          const p = people.find((x) => x.id === pid);
+          if (!p || !p.notes || !p.notes[idx]) return;
+          const note = p.notes[idx];
+          const container = document.getElementById("notesList");
+          const form = document.createElement("div");
+          form.className = "note-item";
+          form.innerHTML = `
+            <div class="note-meta">Editando • ${escapeHtml(note.date || "—")}</div>
+            <textarea id="editNoteText" style="width:100%;min-height:80px;padding:8px;margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--text-primary);border-radius:6px">${escapeHtml(note.text)}</textarea>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button id="saveEditNote" class="btn-filter">Salvar</button>
+              <button id="cancelEditNote" class="btn-clear">Cancelar</button>
+            </div>
+          `;
+          container.prepend(form);
+          document.getElementById("editNoteText").focus();
+          document.getElementById("saveEditNote").addEventListener("click", function () {
+            const text = document.getElementById("editNoteText").value.trim();
+            if (!text) return showErrorToast("Texto da nota não pode ficar vazio");
+            const old = p.notes[idx].text;
+            p.notes[idx].text = text;
+            if (!saveToStorage()) {
+              p.notes[idx].text = old;
+              return;
+            }
+            renderNotesList(pid);
+            showToast("Observação atualizada");
+          });
+          document.getElementById("cancelEditNote").addEventListener("click", function () {
+            form.remove();
+          });
+          return;
+        }
+        const delBtn = e.target.closest('[data-action="delete-note"]');
+        if (delBtn) {
+          const pid = delBtn.dataset.person;
+          const idx = Number(delBtn.dataset.index);
+          const p = people.find((x) => x.id === pid);
+          if (!p || !p.notes || !p.notes[idx]) return;
+          if (!confirm("Excluir esta observação?")) return;
+          const backup = p.notes.slice();
+          p.notes.splice(idx, 1);
+          if (!saveToStorage()) {
+            p.notes = backup;
+            return;
+          }
+          renderNotesList(pid);
+          showToast("Observação removida");
+        }
+      });
+
+      /* -----------------------
+         Escala (Sábado / Domingo)
+      ------------------------*/
+      const SCHEDULE_KEY = "gt_schedule_v1";
+      const saturdaySlots = [
+        ["07:30","11:30","12:30","15:50"],
+        ["08:00","12:30","13:30","16:20"],
+        ["09:00","13:30","14:30","17:20"],
+        ["10:00","14:00","15:00","18:20"],
+        ["12:00","15:00","16:00","20:20"],
+        ["12:00","16:00","17:00","21:20"],
+      ];
+      const sundaySlots = [
+        ["08:00","12:00","13:00","16:20"],
+        ["08:00","12:30","13:30","16:20"],
+        ["12:00","14:00","15:00","20:20"],
+        ["12:00","15:00","16:00","20:20"],
+      ];
+      let schedule = { saturday: {}, sunday: {} };
+      function loadSchedule() {
+        try {
+          const s = localStorage.getItem(SCHEDULE_KEY);
+          if (!s) return;
+          const parsed = JSON.parse(s);
+          if (parsed && typeof parsed === 'object') schedule = parsed;
+        } catch (e) {}
+      }
+      function saveSchedule() {
+        try {
+          localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
+          showToast('Escala salva');
+        } catch (e) {
+          showErrorToast('Erro ao salvar escala');
+        }
+      }
+      function buildSelectForPerson(selectedId) {
+        const opts = ['<option value="">(vago)</option>']
+          .concat(people.map(p => `<option value="${p.id}" ${p.id===selectedId? 'selected':''}>${escapeHtml(p.name)}</option>`));
+        return `<select class="shift-select">${opts.join('')}</select>`;
+      }
+      function renderScheduleTables() {
+        const stBody = document.querySelector('#saturdayTable tbody');
+        stBody.innerHTML = saturdaySlots.map((slot, i) => {
+          const key = 'h'+(i+1);
+          const selected = (schedule.saturday && schedule.saturday[key]) || '';
+          return `<tr data-key="${key}"><td>Horário ${i+1}</td><td>${slot[0]}</td><td>${slot[1]}</td><td>${slot[2]}</td><td>${slot[3]}</td><td>${buildSelectForPerson(selected)}</td></tr>`;
+        }).join('');
+        const sdBody = document.querySelector('#sundayTable tbody');
+        sdBody.innerHTML = sundaySlots.map((slot, i) => {
+          const key = 'h'+(i+1);
+          const selected = (schedule.sunday && schedule.sunday[key]) || '';
+          return `<tr data-key="${key}"><td>Horário ${i+1}</td><td>${slot[0]}</td><td>${slot[1]}</td><td>${slot[2]}</td><td>${slot[3]}</td><td>${buildSelectForPerson(selected)}</td></tr>`;
+        }).join('');
+        // attach change listeners
+        document.querySelectorAll('#saturdayTable tbody select').forEach((sel, idx) => {
+          sel.addEventListener('change', function () {
+            schedule.saturday = schedule.saturday || {};
+            schedule.saturday['h'+(idx+1)] = this.value || null;
+            saveSchedule();
+          });
+        });
+        document.querySelectorAll('#sundayTable tbody select').forEach((sel, idx) => {
+          sel.addEventListener('change', function () {
+            schedule.sunday = schedule.sunday || {};
+            schedule.sunday['h'+(idx+1)] = this.value || null;
+            saveSchedule();
+          });
+        });
+      }
       // Inicialização
       people = loadFromStorage();
+      ensureNotesOnPeople(people);
       renderDemandFilter();
       render();
+      // Theme, notes and schedule init
+      initTheme();
+      renderNotesPersonSelect();
+      loadSchedule();
+      renderScheduleTables();
     </script>
   </body>
 </html>
