@@ -1287,7 +1287,6 @@
           section.style.display = "none";
         }
       }
-
       function renderDemandFilter() {
         const select = document.getElementById("demandFilter");
         select.innerHTML =
@@ -1484,7 +1483,6 @@
         const btn = document.getElementById("clearFilters");
         btn.style.display = searchTerm || filterDemand ? "block" : "none";
       }
-
       /* -----------------------
          Theme toggle (Light / Dark)
          - Persiste preferência no localStorage
