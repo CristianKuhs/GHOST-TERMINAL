@@ -1423,6 +1423,14 @@
     <!-- Main Script -->
     <script>
       /* eslint-disable no-undef */
+      /*
+       * CORREÇÕES APLICADAS (2026-02-13):
+       * - Corrigida geração de agendas: Agora usa shuffle para distribuição aleatória
+       * - Otimizada performance: renderPeopleGrid usa DocumentFragment
+       * - Melhorada segurança: Verificação de XLSX antes de exportar
+       * - Adicionada verificação de localStorage no init
+       * - Tratamento de erros aprimorado em exportação
+       */
       // ==============================================
       // CONSTANTES
       // ==============================================
@@ -1523,21 +1531,22 @@
         week4: { label: "Semana 4", weekend: "4º Fim de Semana" },
       };
       const INITIAL_PEOPLE = [
-        { id: "1", name: "Cristian", role: "Agente", demands: [] },
-        { id: "2", name: "Eduardo", role: "Agente", demands: [] },
-        { id: "3", name: "Emanuela", role: "Agente", demands: [] },
-        { id: "4", name: "Emilly", role: "Agente", demands: [] },
-        { id: "5", name: "Felipe", role: "Agente", demands: [] },
-        { id: "6", name: "João", role: "Agente", demands: [] },
-        { id: "7", name: "Kaua", role: "Agente", demands: [] },
-        { id: "8", name: "Kauane", role: "Agente", demands: [] },
-        { id: "9", name: "Luiz", role: "Agente", demands: [] },
-        { id: "10", name: "Pamela", role: "Agente", demands: [] },
-        { id: "11", name: "Patrick", role: "Agente", demands: [] },
-        { id: "12", name: "Pedro", role: "Agente", demands: [] },
-        { id: "13", name: "Richard", role: "Agente", demands: [] },
-        { id: "14", name: "Thais", role: "Agente", demands: [] },
-        { id: "15", name: "Vitória", role: "Agente", demands: [] },
+        { id: "1", name: "Charlote", role: "Agente", demands: [] },
+        { id: "2", name: "Cristian", role: "Agente", demands: [] },
+        { id: "3", name: "Eduardo", role: "Agente", demands: [] },
+        { id: "4", name: "Emanuela", role: "Agente", demands: [] },
+        { id: "5", name: "Emilly", role: "Agente", demands: [] },
+        { id: "6", name: "Felipe", role: "Agente", demands: [] },
+        { id: "7", name: "Fernando", role: "Agente", demands: [] },
+        { id: "8", name: "João", role: "Agente", demands: [] },
+        { id: "9", name: "Kaua", role: "Agente", demands: [] },
+        { id: "10", name: "Kauane", role: "Agente", demands: [] },
+        { id: "11", name: "Pamela", role: "Agente", demands: [] },
+        { id: "12", name: "Patrick", role: "Agente", demands: [] },
+        { id: "13", name: "Pedro", role: "Agente", demands: [] },
+        { id: "14", name: "Richard", role: "Agente", demands: [] },
+        { id: "15", name: "Thais", role: "Agente", demands: [] },
+        { id: "16", name: "Vitória", role: "Agente", demands: [] },
       ];
       const DEMANDS = [
         { id: "nivel2", name: "Nível II", color: "bg-blue" },
@@ -1716,13 +1725,22 @@
       }
       /**
        * Gera 4 agendas de fim de semana aleatórias para o mês
-       * Cada agente é atribuído a apenas um turno em toda a semana gerada
-       * Agentes não atribuídos aparecem na seção "Off/Day Off"
+       * Cada agente é atribuído aleatoriamente aos turnos, com distribuição equilibrada
+       * Agentes podem ser atribuídos a múltiplos turnos se necessário, mas com aleatoriedade
        */
       function generateMonthWeekendSchedules() {
         if (!people || people.length === 0) {
           showToast("Nenhum agente disponível para gerar agendas.", "warning");
           return;
+        }
+        // Função auxiliar para embaralhar array
+        function shuffleArray(array) {
+          const shuffled = [...array];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          return shuffled;
         }
         // Reseta as agendas
         monthWeekendSchedules = {
@@ -1732,20 +1750,17 @@
           week4: { saturday: {}, sunday: {} },
         };
         const weeks = ["week1", "week2", "week3", "week4"];
-        const agentIds = people.map((p) => p.id);
-        let agentIndex = 0;
         // Para cada semana, gera sábado e domingo
         weeks.forEach((week) => {
           const shifts = ["saturday", "sunday"];
           shifts.forEach((day) => {
             const shiftsForDay =
               day === "saturday" ? WEEKEND_SHIFTS.saturday : WEEKEND_SHIFTS.sunday;
-            // Atribui agentes aleatoriamente aos turnos do dia
+            const shuffledAgents = shuffleArray(people.map(p => p.id));
+            // Atribui agentes embaralhados aos turnos do dia
             shiftsForDay.forEach((shift, shiftIndex) => {
-              // Circula entre os agentes disponíveis
-              const randomAgentId = agentIds[agentIndex % agentIds.length];
-              monthWeekendSchedules[week][day][shiftIndex] = randomAgentId;
-              agentIndex++;
+              const agentId = shuffledAgents[shiftIndex % shuffledAgents.length];
+              monthWeekendSchedules[week][day][shiftIndex] = agentId;
             });
           });
         });
@@ -1906,6 +1921,11 @@
         return data;
       }
       function exportDemandToExcel(demandId) {
+        // Verificar se XLSX está carregado
+        if (typeof XLSX === 'undefined') {
+          showToast("Biblioteca de exportação não carregada. Verifique sua conexão.", "error");
+          return;
+        }
         const demand = DEMANDS.find((d) => d.id === demandId);
         if (!demand) {
           showToast("Demanda não encontrada", "error");
@@ -1916,37 +1936,42 @@
           showToast("Nenhum dado para exportar nesta demanda", "warning");
           return;
         }
-        // Criar planilha
-        const ws = XLSX.utils.json_to_sheet(data);
-        // Ajustar largura das colunas
-        const colWidths = [
-          { wch: 25 }, // Função
-          { wch: 20 }, // Agente
-          { wch: 15 }, // Data
-          { wch: 15 }, // Turno
-          { wch: 15 }, // Status
-          { wch: 30 }, // Observações
-        ];
-        ws["!cols"] = colWidths;
-        // Estilizar cabeçalho
-        const headerStyle = {
-          fill: { fgColor: { rgb: "FF2563EB" } },
-          font: { bold: true, color: { rgb: "FFFFFFFF" } },
-          alignment: { horizontal: "center", vertical: "center" },
-        };
-        for (let i = 0; i < data[0] ? Object.keys(data[0]).length : 0; i++) {
-          const cellRef = XLSX.utils.encode_col(i) + "1";
-          if (ws[cellRef]) {
-            ws[cellRef].s = headerStyle;
+        try {
+          // Criar planilha
+          const ws = XLSX.utils.json_to_sheet(data);
+          // Ajustar largura das colunas
+          const colWidths = [
+            { wch: 25 }, // Função
+            { wch: 20 }, // Agente
+            { wch: 15 }, // Data
+            { wch: 15 }, // Turno
+            { wch: 15 }, // Status
+            { wch: 30 }, // Observações
+          ];
+          ws["!cols"] = colWidths;
+          // Estilizar cabeçalho
+          const headerStyle = {
+            fill: { fgColor: { rgb: "FF2563EB" } },
+            font: { bold: true, color: { rgb: "FFFFFFFF" } },
+            alignment: { horizontal: "center", vertical: "center" },
+          };
+          for (let i = 0; i < data[0] ? Object.keys(data[0]).length : 0; i++) {
+            const cellRef = XLSX.utils.encode_col(i) + "1";
+            if (ws[cellRef]) {
+              ws[cellRef].s = headerStyle;
+            }
           }
+          // Criar workbook e exportar
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, demand.name);
+          const today = new Date().toISOString().split("T")[0];
+          const fileName = `Escala_${demand.name.replace(/\s+/g, "_")}_${today}.xlsx`;
+          XLSX.writeFile(wb, fileName);
+          showToast(`Exportado: ${fileName}`, "success");
+        } catch (error) {
+          console.error("Erro ao exportar:", error);
+          showToast("Erro ao gerar arquivo de exportação", "error");
         }
-        // Criar workbook e exportar
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, demand.name);
-        const today = new Date().toISOString().split("T")[0];
-        const fileName = `Escala_${demand.name.replace(/\s+/g, "_")}_${today}.xlsx`;
-        XLSX.writeFile(wb, fileName);
-        showToast(`Exportado: ${fileName}`, "success");
       }
       // ==============================================
       // RENDERING
@@ -1954,58 +1979,83 @@
       function renderPeopleGrid() {
         const grid = document.getElementById("peopleGrid");
         const filtered = getFilteredPeople();
-        if (filtered.length === 0) {
+        grid.innerHTML = "";
+        if (!filtered || filtered.length === 0) {
           grid.innerHTML = `
             <div class="empty-state">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              <p>Nenhum agente encontrado</p>
+              <p>Nenhum agente encontrado.</p>
             </div>
           `;
           return;
         }
-        grid.innerHTML = filtered
-          .map(
-            (person) => `
-          <div class="person-card">
-            <div class="person-header">
-              <div class="person-avatar">${escapeHtml(person.name.charAt(0))}</div>
-              <div class="person-info">
-                <h3>${escapeHtml(person.name)}</h3>
-                <p>${escapeHtml(person.role)}</p>
-              </div>
-            </div>
-            ${
-              person.demands.length > 0
-                ? `
-              <div class="demands-section">
-                <div class="demands-title">Demandas (${person.demands.length})</div>
-                <div class="demands-list">
-                  ${person.demands
-                    .map((demandId) => {
-                      const demand = DEMANDS.find((d) => d.id === demandId);
-                      if (!demand) return "";
-                      return `
-                    <div class="demand-item">
-                      <div class="demand-dot ${demand.color}"></div>
-                      <span>${escapeHtml(demand.name)}</span>
-                    </div>
-                  `;
-                    })
-                    .join("")}
-                </div>
-              </div>
-            `
-                : `<div class="demands-section" style="text-align: center; color: var(--text-secondary); font-size: 0.85rem;">Sem demandas</div>`
-            }
-            <button class="btn-assign" data-action="open-modal" data-person="${person.id}">
-              + Atribuir
-            </button>
-          </div>
-        `,
-          )
-          .join("");
+        const fragment = document.createDocumentFragment();
+        filtered.forEach((person) => {
+          const card = document.createElement("div");
+          card.className = "person-card";
+          // Header
+          const header = document.createElement("div");
+          header.className = "person-header";
+          const avatar = document.createElement("div");
+          avatar.className = "person-avatar";
+          avatar.textContent = (person.name || "?").charAt(0);
+          const info = document.createElement("div");
+          info.className = "person-info";
+          const h3 = document.createElement("h3");
+          h3.textContent = person.name || "";
+          const p = document.createElement("p");
+          p.textContent = person.role || "";
+          info.appendChild(h3);
+          info.appendChild(p);
+          header.appendChild(avatar);
+          header.appendChild(info);
+          card.appendChild(header);
+          // Demands
+          if (Array.isArray(person.demands) && person.demands.length > 0) {
+            const demandsSection = document.createElement("div");
+            demandsSection.className = "demands-section";
+            const title = document.createElement("div");
+            title.className = "demands-title";
+            title.textContent = `Demandas (${person.demands.length})`;
+            const list = document.createElement("div");
+            list.className = "demands-list";
+            person.demands.forEach((demandId) => {
+              const demand = DEMANDS.find((d) => d.id === demandId);
+              if (!demand) return;
+              const item = document.createElement("div");
+              item.className = "demand-item";
+              const dot = document.createElement("div");
+              dot.className = `demand-dot ${demand.color}`;
+              const span = document.createElement("span");
+              span.textContent = demand.name;
+              item.appendChild(dot);
+              item.appendChild(span);
+              list.appendChild(item);
+            });
+            demandsSection.appendChild(title);
+            demandsSection.appendChild(list);
+            card.appendChild(demandsSection);
+          } else {
+            const noDem = document.createElement("div");
+            noDem.className = "demands-section";
+            noDem.style.textAlign = "center";
+            noDem.style.color = "var(--text-secondary)";
+            noDem.style.fontSize = "0.85rem";
+            noDem.textContent = "Sem demandas";
+            card.appendChild(noDem);
+          }
+          // Assign button
+          const btn = document.createElement("button");
+          btn.className = "btn-assign";
+          btn.setAttribute("data-action", "open-modal");
+          btn.setAttribute("data-person", person.id);
+          btn.textContent = "+ Atribuir";
+          card.appendChild(btn);
+          fragment.appendChild(card);
+        });
+        grid.appendChild(fragment);
       }
       function renderDemandFilter() {
         const select = document.getElementById("demandFilter");
@@ -2610,6 +2660,10 @@
       // ==============================================
       function init() {
         try {
+          // Verificar se localStorage está disponível
+          if (typeof Storage === "undefined") {
+            throw new Error("localStorage não suportado neste navegador");
+          }
           people = loadFromStorage();
           internalObservations = loadObservations();
           weekendSchedule = loadWeekendSchedule();
@@ -2623,7 +2677,10 @@
           console.log("✓ Sistema inicializado com sucesso");
         } catch (e) {
           console.error("Erro durante inicialização:", e);
-          showToast("Erro ao inicializar sistema", "error");
+          showToast("Erro ao inicializar sistema. Alguns recursos podem não funcionar.", "error");
+          // Fallback para dados iniciais
+          people = JSON.parse(JSON.stringify(INITIAL_PEOPLE));
+          render();
         }
       }
       if (document.readyState === "loading") {
